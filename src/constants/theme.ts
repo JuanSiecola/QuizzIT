@@ -1,65 +1,78 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
+// src/constants/theme.ts
 
-import '@/global.css';
+export const colors = {
+  background: '#0A0A12',
+  surface: '#14141E',
+  inputBg: '#16161F',
+  primary: '#6D4AFF',
+  primaryDark: '#5A3AE0',
+  accent: '#35D6CE',
+  textPrimary: '#FFFFFF',
+  textSecondary: '#9A9AAE',
+  textMuted: '#6B6B7B',
+  border: '#2A2A38',
+  error: '#FF5C5C',
+  success: '#35D68C',
+} as const;
 
-import { Platform } from 'react-native';
+export const spacing = {
+  xs: 4,
+  sm: 8,
+  md: 16,
+  lg: 24,
+  xl: 32,
+  xxl: 48,
+} as const;
 
+export const radius = {
+  sm: 8,
+  md: 12,
+  lg: 16,
+  full: 999,
+} as const;
+
+export const fontSizes = {
+  small: 13,
+  label: 14,
+  body: 16,
+  heading: 24,
+  title: 32,
+  hero: 40,
+} as const;
+
+export const fontWeights = {
+  regular: '400',
+  medium: '500',
+  semibold: '600',
+  bold: '700',
+} as const;
+
+export const fonts = {
+  regular: 'System',
+} as const;
+
+// Compatibilidad con el resto del código
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    background: colors.background,
+    text: colors.textPrimary,
+    border: colors.border,
+    tint: colors.primary,
+    icon: colors.textSecondary,
+    tabIconDefault: colors.textMuted,
+    tabIconSelected: colors.primary,
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    background: colors.background,
+    text: colors.textPrimary,
+    border: colors.border,
+    tint: colors.primary,
+    icon: colors.textSecondary,
+    tabIconDefault: colors.textMuted,
+    tabIconSelected: colors.primary,
   },
 } as const;
 
-export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
-
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
-});
-
-export const Spacing = {
-  half: 2,
-  one: 4,
-  two: 8,
-  three: 16,
-  four: 24,
-  five: 32,
-  six: 64,
-} as const;
-
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
+export type ThemeColor = keyof typeof Colors.light;
+export const Spacing = spacing;
+export const Fonts = fonts;
