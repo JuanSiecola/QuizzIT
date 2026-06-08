@@ -15,4 +15,11 @@ Esta es una aplicación móvil de preguntas y respuestas sobre distintas áreas 
    ```bash
    npx expo start
    ```
+
+4. Para correr la app con el celu conectado USB es con:
+
+   ```bash
+   npm run android
+   ```
+Se debe tener activada la depuración USB en el dispositivo móvil y el modo desarrollador habilitado.
 3. Escanear el código QR con tu dispositivo móvil para abrir la aplicación en Expo Go.
