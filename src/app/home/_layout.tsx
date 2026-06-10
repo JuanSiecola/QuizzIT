@@ -60,6 +60,10 @@ export default function TabsLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="dificultad/[categoriaId]"
+        options={{ href: null }}
+      />
     </Tabs>
   )
 }
