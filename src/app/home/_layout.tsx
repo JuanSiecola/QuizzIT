@@ -1,7 +1,7 @@
-import { colors } from '@/constants/theme';
-import { Ionicons } from '@expo/vector-icons';
-import { Tabs } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors } from "@/constants/theme";
+import { Ionicons } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
@@ -20,14 +20,14 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '500',
+          fontWeight: "500",
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Inicio',
+          title: "Inicio",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
           ),
@@ -36,7 +36,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="categorias"
         options={{
-          title: 'Categorías',
+          title: "Categorías",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="grid-outline" size={size} color={color} />
           ),
@@ -45,7 +45,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="historial"
         options={{
-          title: 'Historial',
+          title: "Historial",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="time-outline" size={size} color={color} />
           ),
@@ -54,16 +54,14 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="perfil"
         options={{
-          title: 'Perfil',
+          title: "Perfil",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color} />
           ),
         }}
       />
-      <Tabs.Screen
-        name="dificultad/[categoriaId]"
-        options={{ href: null }}
-      />
+      <Tabs.Screen name="dificultad/[categoriaId]" options={{ href: null }} />
+      <Tabs.Screen name="detalle-partida/[id]" options={{ href: null }} />
     </Tabs>
-  )
+  );
 }
