@@ -107,3 +107,18 @@ export async function getPartidaDetalle(
   if (error) throw error;
   return data as PartidaConRespuestas;
 }
+
+export async function finalizarPartida(
+  partidaId: number,
+  data: { puntaje: number },
+): Promise<void> {
+  const { error } = await supabase
+    .from("partida")
+    .update({
+      puntaje: data.puntaje,
+      fecha_fin: new Date().toISOString(),
+    })
+    .eq("id", partidaId);
+
+  if (error) throw error;
+}
