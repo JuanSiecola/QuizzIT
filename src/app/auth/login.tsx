@@ -2,7 +2,7 @@ import { Logo } from '@/components/logo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { colors, fontSizes, spacing } from '@/constants/theme'
-import { supabase } from '@/utils/supabase'
+import { signIn } from '@/services/auth'
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
 import {
@@ -28,12 +28,13 @@ export default function LoginScreen() {
       return
     }
     setCargando(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    setCargando(false)
-    if (error) {
-      Alert.alert('Error', error.message)
-    } else {
+    try {
+      await signIn(email, password)
       router.replace('/home')
+    } catch (error: any) {
+      Alert.alert('Error', error.message ?? 'No se pudo iniciar sesión')
+    } finally {
+      setCargando(false)
     }
   }
 

@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { colors, fontSizes, radius, spacing } from '@/constants/theme'
-import { supabase } from '@/utils/supabase'
+import { signUp } from '@/services/auth'
 import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useState } from 'react'
@@ -39,19 +39,13 @@ export default function RegisterScreen() {
     }
 
     setCargando(true)
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { nombre } },
-    })
-    setCargando(false)
-
-    if (error) {
-      Alert.alert('Error', error.message)
-    } else {
-      Alert.alert('¡Listo!', 'Cuenta creada correctamente.', [
-        { text: 'Iniciar sesión', onPress: () => router.replace('/auth/login') },
-      ])
+    try {
+      await signUp(email, password, nombre)
+      router.replace('/home')
+    } catch (error: any) {
+      Alert.alert('Error', error.message ?? 'No se pudo crear la cuenta')
+    } finally {
+      setCargando(false)
     }
   }
 
