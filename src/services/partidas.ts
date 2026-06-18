@@ -17,7 +17,7 @@ export interface RespuestaDetalle {
   pregunta: { enunciado: string };
   opcion_elegida: { texto: string };
   es_correcta: boolean;
-  puntaje_obtenido: number;
+  puntaje_obtenido?: number;
 }
 
 export interface PartidaConRespuestas extends Partida {
@@ -81,6 +81,17 @@ export async function getRecordByCategoria(
   return data?.puntaje ?? null;
 }
 
+export async function getPartidaById(partidaId: number): Promise<Partida> {
+  const { data, error } = await supabase
+    .from("partida")
+    .select("*")
+    .eq("id", partidaId)
+    .single();
+
+  if (error) throw error;
+  return data as Partida;
+}
+
 export async function getPartidasByUser(
   userId: string,
 ): Promise<PartidaItemHistorial[]> {
@@ -136,12 +147,11 @@ export async function getPartidaDetalle(
         icono,
         color
       ),
-      respuestas:respuesta_usuario (
+      respuestas:partida_pregunta (
         id,
-        es_correcta,
-        puntaje_obtenido,
-        pregunta:pregunta_id ( enunciado ),
-        opcion_elegida:opcion_elegida_id ( texto )
+        correcta,
+        pregunta:pregunta_id ( texto ),
+        opcion_elegida:id_respuesta_elegida ( texto )
       )
     `,
     )
@@ -150,10 +160,27 @@ export async function getPartidaDetalle(
 
   if (error) throw error;
 
-  const partida = data as Omit<
+  const partidaData = data as Omit<
     PartidaConRespuestas,
-    "esRecord" | "puntajeRecord" | "diferencia"
-  >;
+    "esRecord" | "puntajeRecord" | "diferencia" | "respuestas"
+  > & {
+    respuestas: {
+      id: number;
+      correcta: boolean | null;
+      pregunta: { texto: string } | null;
+      opcion_elegida: { texto: string } | null;
+    }[];
+  };
+
+  const partida = {
+    ...partidaData,
+    respuestas: (partidaData.respuestas ?? []).map((respuesta) => ({
+      id: respuesta.id,
+      pregunta: { enunciado: respuesta.pregunta?.texto ?? "—" },
+      opcion_elegida: { texto: respuesta.opcion_elegida?.texto ?? "—" },
+      es_correcta: respuesta.correcta ?? false,
+    })),
+  };
 
   //traer el record del user en esa categoria+dificultad
   let puntajeRecord = partida.puntaje; // fallback: es su primer puntaje

@@ -67,7 +67,7 @@ export default function HomeScreen() {
     }
 
     cargarPerfil()
-  }, [])
+  }, [router])
 
   if (cargando) {
     return (

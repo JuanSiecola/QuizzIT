@@ -19,3 +19,27 @@ export interface Partida {
   categoria_id: number | null; 
   dificultad: DificultadEnum | null;
 }
+
+export interface Opcion {
+  id: number;
+  pregunta_id: number;
+  texto: string;
+  es_correcta: boolean;
+}
+
+export interface Pregunta {
+  id: number;
+  texto: string;
+  dificultad: DificultadEnum;
+  opciones: Opcion[];
+}
+
+export interface PartidaPregunta {
+  id: number;
+  partida_id: number;
+  pregunta_id: number;
+  orden: number;
+  respondida: boolean;
+  correcta: boolean | null;
+  id_respuesta_elegida: number | null;
+}

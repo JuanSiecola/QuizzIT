@@ -65,7 +65,7 @@ const statStyles = StyleSheet.create({
   },
 });
 
-// ─── Pantalla ─────────────────────────────────────────────────────────────────
+
 export default function PerfilScreen() {
   const router = useRouter();
   const [perfil, setPerfil] = useState<PerfilData | null>(null);
@@ -120,7 +120,7 @@ export default function PerfilScreen() {
     return () => {
       activo = false;
     };
-  }, []);
+  }, [router]);
 
   async function handleCerrarSesion() {
     Alert.alert("Cerrar sesión", "¿Estás seguro?", [

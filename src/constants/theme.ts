@@ -16,6 +16,12 @@ export const colors = {
 } as const;
 
 export const spacing = {
+  half: 2,
+  one: 4,
+  two: 8,
+  three: 12,
+  four: 16,
+  five: 24,
   xs: 4,
   sm: 8,
   md: 16,
@@ -49,13 +55,17 @@ export const fontWeights = {
 
 export const fonts = {
   regular: 'System',
+  mono: 'monospace',
 } as const;
 
 // Compatibilidad con el resto del código
 export const Colors = {
   light: {
     background: colors.background,
+    backgroundElement: colors.surface,
+    backgroundSelected: colors.inputBg,
     text: colors.textPrimary,
+    textSecondary: colors.textSecondary,
     border: colors.border,
     tint: colors.primary,
     icon: colors.textSecondary,
@@ -64,7 +74,10 @@ export const Colors = {
   },
   dark: {
     background: colors.background,
+    backgroundElement: colors.surface,
+    backgroundSelected: colors.inputBg,
     text: colors.textPrimary,
+    textSecondary: colors.textSecondary,
     border: colors.border,
     tint: colors.primary,
     icon: colors.textSecondary,
@@ -76,3 +89,4 @@ export const Colors = {
 export type ThemeColor = keyof typeof Colors.light;
 export const Spacing = spacing;
 export const Fonts = fonts;
+export const MaxContentWidth = 960;

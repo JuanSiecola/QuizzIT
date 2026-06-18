@@ -38,7 +38,7 @@ export default function ResultadoFinalScreen() {
     }
 
     cerrarPartida();
-  }, []);
+  }, [partidaId, puntaje]);
 
   if (guardando) {
     return (
