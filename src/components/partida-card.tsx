@@ -1,16 +1,17 @@
 import { colors, fontSizes, radius, spacing } from "@/constants/theme";
 import { PartidaItemHistorial } from "@/services/partidas";
 import {
-    Boxes,
-    Brain,
-    Code2,
-    Database,
-    HelpCircle,
-    LucideIcon,
-    Monitor,
-    Network,
-    Server,
-    ShieldCheck,
+  Boxes,
+  Brain,
+  Code2,
+  Database,
+  HelpCircle,
+  LucideIcon,
+  Monitor,
+  Network,
+  Server,
+  ShieldCheck,
+  Trophy,
 } from "lucide-react-native";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -53,14 +54,28 @@ export function PartidaCard({ partida, onVerDetalle }: Props) {
           <Icono size={20} color={color} />
         </View>
         <View style={styles.info}>
-          <Text style={styles.nombre}>{cat?.nombre ?? "Categoría"}</Text>
+          {/* Nombre de categoria + badge de record en la misma fila */}
+          <View style={styles.nombreFila}>
+            <Text style={styles.nombre} numberOfLines={1}>
+              {cat?.nombre ?? "Categoría"}
+            </Text>
+            {partida.esRecord && (
+              <View style={styles.recordBadge}>
+                <Trophy size={11} color="#F5C518" strokeWidth={2.5} />
+                <Text style={styles.recordTexto}>Récord</Text>
+              </View>
+            )}
+          </View>
+
           <Text style={styles.fecha}>
             {formatearFecha(partida.fecha_inicio)}
           </Text>
+
           <Text style={styles.puntaje}>
             Puntaje:{" "}
             <Text style={styles.puntajeValor}>{partida.puntaje} pts</Text>
           </Text>
+
           <View style={styles.estadoBadge}>
             <Text style={styles.estadoTexto}>
               {partida.fecha_fin ? "Finalizada" : "En curso"}
@@ -112,9 +127,30 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 3,
   },
+  nombreFila: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    flexWrap: "wrap",
+  },
   nombre: {
     color: colors.textPrimary,
     fontSize: fontSizes.body,
+    fontWeight: "700",
+    flexShrink: 1,
+  },
+  recordBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "#F5C51822",
+    borderRadius: radius.sm,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  recordTexto: {
+    color: "#F5C518",
+    fontSize: 11,
     fontWeight: "700",
   },
   fecha: {
