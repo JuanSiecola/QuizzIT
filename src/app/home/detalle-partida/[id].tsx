@@ -1,31 +1,33 @@
 import { colors, fontSizes, radius, spacing } from "@/constants/theme";
 import {
-    getPartidaDetalle,
-    PartidaConRespuestas,
-    RespuestaDetalle,
+  getPartidaDetalle,
+  PartidaConRespuestas,
+  RespuestaDetalle,
 } from "@/services/partidas";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import {
-    Boxes,
-    Brain,
-    Code2,
-    Database,
-    HelpCircle,
-    LucideIcon,
-    Monitor,
-    Network,
-    Server,
-    ShieldCheck,
+  Boxes,
+  Brain,
+  Code2,
+  Database,
+  HelpCircle,
+  LucideIcon,
+  Medal,
+  Monitor,
+  Network,
+  Server,
+  ShieldCheck,
+  Trophy,
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 const ICONOS: Record<string, LucideIcon> = {
@@ -48,6 +50,99 @@ function formatearFecha(iso: string): string {
   const m = String(d.getMinutes()).padStart(2, "0");
   return `${dia}/${mes}/${anio} - ${h}:${m}`;
 }
+
+function BloqueRecord({
+  esRecord,
+  puntaje,
+  puntajeRecord,
+  diferencia,
+}: {
+  esRecord: boolean;
+  puntaje: number;
+  puntajeRecord: number;
+  diferencia: number;
+}) {
+  // caso: primera partida en esta categoria+dificultad (puntajeRecord === puntaje)
+  const esPrimera = puntaje === puntajeRecord && diferencia === 0;
+
+  if (esPrimera) {
+    return (
+      <View
+        style={[estilosRecord.bloque, { borderColor: colors.primary + "55" }]}
+      >
+        <Medal size={20} color={colors.primary} strokeWidth={2} />
+        <View style={estilosRecord.textos}>
+          <Text style={estilosRecord.titulo}>Primera partida aquí</Text>
+          <Text style={estilosRecord.subtitulo}>
+            Este es tu puntaje inicial en esta categoría y dificultad.
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (esRecord) {
+    return (
+      <View style={[estilosRecord.bloque, { borderColor: "#F5C51855" }]}>
+        <Trophy size={20} color="#F5C518" strokeWidth={2} />
+        <View style={estilosRecord.textos}>
+          <Text style={[estilosRecord.titulo, { color: "#F5C518" }]}>
+            Nuevo récord personal
+          </Text>
+          <Text style={estilosRecord.subtitulo}>
+            Superaste tu mejor marca por{" "}
+            <Text style={{ color: colors.success, fontWeight: "700" }}>
+              +{Math.abs(diferencia)} pts
+            </Text>
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  // No llegó al record
+  return (
+    <View style={[estilosRecord.bloque, { borderColor: colors.border }]}>
+      <Trophy size={20} color={colors.textMuted} strokeWidth={2} />
+      <View style={estilosRecord.textos}>
+        <Text style={estilosRecord.titulo}>Tu récord: {puntajeRecord} pts</Text>
+        <Text style={estilosRecord.subtitulo}>
+          Te faltaron{" "}
+          <Text style={{ color: colors.error, fontWeight: "700" }}>
+            {Math.abs(diferencia)} pts
+          </Text>{" "}
+          para superarlo.
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+const estilosRecord = StyleSheet.create({
+  bloque: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    padding: spacing.md,
+  },
+  textos: {
+    flex: 1,
+    gap: 2,
+  },
+  titulo: {
+    color: colors.textPrimary,
+    fontSize: fontSizes.label,
+    fontWeight: "700",
+  },
+  subtitulo: {
+    color: colors.textSecondary,
+    fontSize: fontSizes.small,
+    lineHeight: 18,
+  },
+});
 
 function FilaRespuesta({
   respuesta,
@@ -244,6 +339,14 @@ export default function DetallePartidaScreen() {
             </View>
           </View>
         </View>
+
+        {/* ── Bloque de comparación con el record ── */}
+        <BloqueRecord
+          esRecord={partida.esRecord}
+          puntaje={partida.puntaje}
+          puntajeRecord={partida.puntajeRecord}
+          diferencia={partida.diferencia}
+        />
 
         {/* ── Lista de respuestas ── */}
         <Text style={styles.seccionTitulo}>Respuestas</Text>
