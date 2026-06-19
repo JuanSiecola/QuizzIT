@@ -10,6 +10,7 @@ export interface PartidaItemHistorial extends Partida {
     color: string | null;
   } | null;
   esRecord: boolean; //true si es el puntaje más alto del user en esa categoria+dificultad
+  mejorRachaPartida: number; //racha más larga de respuestas correctas consecutivas, dentro de esta partida
 }
 
 export interface RespuestaDetalle {
@@ -33,6 +34,23 @@ export interface PartidaConRespuestas extends Partida {
 }
 
 // ─── crearPartida (Juan) ─────────────────────────────────────────────────────
+
+function calcularMejorRacha(
+  respuestas: { orden: number; correcta: boolean | null }[],
+): number {
+  const ordenadas = [...respuestas].sort((a, b) => a.orden - b.orden);
+  let mejor = 0;
+  let actual = 0;
+  for (const r of ordenadas) {
+    if (r.correcta) {
+      actual += 1;
+      if (actual > mejor) mejor = actual;
+    } else {
+      actual = 0;
+    }
+  }
+  return mejor;
+}
 
 export async function crearPartida(
   categoriaId: number,
@@ -104,6 +122,10 @@ export async function getPartidasByUser(
         nombre,
         icono,
         color
+      ),
+      respuestas:partida_pregunta (
+        orden,
+        correcta
       )
     `,
     )
@@ -113,7 +135,14 @@ export async function getPartidasByUser(
 
   if (error) throw error;
 
-  const partidas = (data ?? []) as Omit<PartidaItemHistorial, "esRecord">[];
+  type FilaPartida = Omit<
+    PartidaItemHistorial,
+    "esRecord" | "mejorRachaPartida"
+  > & {
+    respuestas: { orden: number; correcta: boolean | null }[];
+  };
+
+  const partidas = (data ?? []) as FilaPartida[];
 
   // calcular el record por cada combinacion categoria+dificultad en memoria,
   // sin queries extra — ya tenemos todos los datos del user.
@@ -127,7 +156,12 @@ export async function getPartidasByUser(
   return partidas.map((p) => {
     const clave = `${p.categoria_id}-${p.dificultad}`;
     const record = recordMap.get(clave) ?? 0;
-    return { ...p, esRecord: p.puntaje === record && record > 0 };
+    const { respuestas, ...resto } = p;
+    return {
+      ...resto,
+      esRecord: p.puntaje === record && record > 0,
+      mejorRachaPartida: calcularMejorRacha(respuestas ?? []),
+    };
   });
 }
 
