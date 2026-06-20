@@ -52,7 +52,7 @@ export async function getPreguntasByCategoria(
 
   if (error) throw error;
 
-  const preguntas = (((data ?? []) as unknown) as PreguntaRelacionRow[])
+  const preguntas = ((data ?? []) as unknown as PreguntaRelacionRow[])
     .map((row) => normalizarPregunta(row.pregunta))
     .filter((pregunta): pregunta is PreguntaData => {
       return !!pregunta && pregunta.dificultad === dificultad;
@@ -78,7 +78,9 @@ export async function prepararPreguntasPartida(
 
   if (errorExistentes) throw errorExistentes;
 
-  const existentesIds = new Set((existentes ?? []).map((item) => item.pregunta_id));
+  const existentesIds = new Set(
+    (existentes ?? []).map((item) => item.pregunta_id),
+  );
   const nuevas = preguntas
     .map((pregunta, index) => ({
       partida_id: partidaId,
@@ -98,7 +100,7 @@ export async function prepararPreguntasPartida(
 export async function guardarRespuesta(data: {
   partidaId: number;
   preguntaId: number;
-  opcionElegidaId: number;
+  opcionElegidaId: number | null;
   esCorrecta: boolean;
   puntajeObtenido: number;
 }): Promise<void> {

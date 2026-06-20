@@ -1,5 +1,6 @@
 import { ProgressBar } from "@/components/progress-bar";
 import { RespuestaOption } from "@/components/respuesta-option";
+import { TimerBar } from "@/components/timer-bar";
 import { Button } from "@/components/ui/button";
 import { colors, fontSizes, radius, spacing } from "@/constants/theme";
 import { getPartidaById } from "@/services/partidas";
@@ -8,10 +9,10 @@ import {
   guardarRespuesta,
   prepararPreguntasPartida,
 } from "@/services/preguntas";
-import { Opcion, Pregunta } from "@/types/database";
+import { DificultadEnum, Opcion, Pregunta } from "@/types/database";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -31,6 +32,18 @@ const PUNTOS_POR_DIFICULTAD = {
   dificil: 20,
 };
 
+// tiempo límite por pregunta, según dificultad
+const TIEMPO_MS_POR_DIFICULTAD: Record<DificultadEnum, number> = {
+  facil: 10000,
+  intermedio: 15000,
+  dificil: 20000,
+};
+
+// si responde dentro de la primera mitad del tiempo: puntos completos.
+// si responde en la segunda mitad: mitad de los puntos (redondeado).
+const UMBRAL_PENALIZACION = 0.5;
+const FACTOR_PENALIZACION = 0.5;
+
 export default function PartidaScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const partidaId = Number(id);
@@ -45,6 +58,8 @@ export default function PartidaScreen() {
   const [opcionElegida, setOpcionElegida] = useState<Opcion | null>(null);
   const [resultadoVisible, setResultadoVisible] = useState(false);
   const [puntosUltimaRespuesta, setPuntosUltimaRespuesta] = useState(0);
+  const [tiempoAgotado, setTiempoAgotado] = useState(false);
+  const [penalizadoPorTiempo, setPenalizadoPorTiempo] = useState(false);
 
   const preguntaActual = preguntas[indice];
   const total = preguntas.length;
@@ -54,6 +69,24 @@ export default function PartidaScreen() {
     if (!preguntaActual) return 10;
     return PUNTOS_POR_DIFICULTAD[preguntaActual.dificultad] ?? 10;
   }, [preguntaActual]);
+
+  const tiempoLimiteMs = useMemo(() => {
+    if (!preguntaActual) return TIEMPO_MS_POR_DIFICULTAD.facil;
+    return (
+      TIEMPO_MS_POR_DIFICULTAD[preguntaActual.dificultad] ??
+      TIEMPO_MS_POR_DIFICULTAD.facil
+    );
+  }, [preguntaActual]);
+
+  // marca de tiempo de cuándo arrancó a mostrarse la pregunta actual,
+  // usada para calcular si la respuesta llegó a tiempo o tarde
+  const inicioPreguntaRef = useRef(Date.now());
+
+  useEffect(() => {
+    if (preguntaActual) {
+      inicioPreguntaRef.current = Date.now();
+    }
+  }, [indice, preguntaActual]);
 
   useEffect(() => {
     if (!partidaId) return;
@@ -76,7 +109,9 @@ export default function PartidaScreen() {
         if (activo) {
           setPreguntas(data);
           if (data.length === 0) {
-            setError("No hay preguntas cargadas para esta categoría y dificultad.");
+            setError(
+              "No hay preguntas cargadas para esta categoría y dificultad.",
+            );
           }
         }
       } catch {
@@ -94,10 +129,21 @@ export default function PartidaScreen() {
   }, [partidaId]);
 
   async function elegirOpcion(opcion: Opcion) {
-    if (!preguntaActual || opcionElegida || guardando) return;
+    if (!preguntaActual || opcionElegida || guardando || tiempoAgotado) return;
 
     const esCorrecta = opcion.es_correcta;
-    const puntosObtenidos = esCorrecta ? puntosPorPregunta : 0;
+    const tiempoTranscurridoMs = Date.now() - inicioPreguntaRef.current;
+    const proporcionTranscurrida = Math.min(
+      1,
+      tiempoTranscurridoMs / tiempoLimiteMs,
+    );
+    const respondioLento = proporcionTranscurrida >= UMBRAL_PENALIZACION;
+
+    const puntosObtenidos = esCorrecta
+      ? respondioLento
+        ? Math.round(puntosPorPregunta * FACTOR_PENALIZACION)
+        : puntosPorPregunta
+      : 0;
 
     setGuardando(true);
 
@@ -112,12 +158,39 @@ export default function PartidaScreen() {
 
       setOpcionElegida(opcion);
       setPuntosUltimaRespuesta(puntosObtenidos);
+      setPenalizadoPorTiempo(esCorrecta && respondioLento);
       setResultadoVisible(true);
 
       if (esCorrecta) {
         setCorrectas((actual) => actual + 1);
         setPuntaje((actual) => actual + puntosObtenidos);
       }
+    } catch {
+      Alert.alert("Error", "No se pudo guardar tu respuesta.");
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  async function manejarTiempoAgotado() {
+    if (!preguntaActual || opcionElegida || guardando || tiempoAgotado) return;
+
+    setTiempoAgotado(true);
+    setGuardando(true);
+
+    try {
+      // se registra como no respondida / incorrecta, sin opción elegida
+      await guardarRespuesta({
+        partidaId,
+        preguntaId: preguntaActual.id,
+        opcionElegidaId: null,
+        esCorrecta: false,
+        puntajeObtenido: 0,
+      });
+
+      setPuntosUltimaRespuesta(0);
+      setPenalizadoPorTiempo(false);
+      setResultadoVisible(true);
     } catch {
       Alert.alert("Error", "No se pudo guardar tu respuesta.");
     } finally {
@@ -148,6 +221,8 @@ export default function PartidaScreen() {
     setIndice((actual) => actual + 1);
     setOpcionElegida(null);
     setPuntosUltimaRespuesta(0);
+    setTiempoAgotado(false);
+    setPenalizadoPorTiempo(false);
   }
 
   if (cargando) {
@@ -161,13 +236,20 @@ export default function PartidaScreen() {
   if (error || !preguntaActual) {
     return (
       <View style={styles.centro}>
-        <Text style={styles.error}>{error ?? "No se encontró la pregunta."}</Text>
-        <Button label="Volver" variant="outline" onPress={() => router.back()} />
+        <Text style={styles.error}>
+          {error ?? "No se encontró la pregunta."}
+        </Text>
+        <Button
+          label="Volver"
+          variant="outline"
+          onPress={() => router.back()}
+        />
       </View>
     );
   }
 
-  const progresoActual = opcionElegida ? indice + 1 : indice;
+  const progresoActual = opcionElegida || tiempoAgotado ? indice + 1 : indice;
+  const respuestaBloqueada = !!opcionElegida || tiempoAgotado;
 
   return (
     <View style={styles.container}>
@@ -175,8 +257,19 @@ export default function PartidaScreen() {
         <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitulo}>Pregunta {indice + 1} de {total}</Text>
+        <Text style={styles.headerTitulo}>
+          Pregunta {indice + 1} de {total}
+        </Text>
         <Text style={styles.puntaje}>{puntaje} pts</Text>
+      </View>
+
+      <View style={styles.timerWrap}>
+        <TimerBar
+          duracionMs={tiempoLimiteMs}
+          resetKey={preguntaActual.id}
+          pausado={respuestaBloqueada}
+          onTerminar={manejarTiempoAgotado}
+        />
       </View>
 
       <ScrollView
@@ -193,12 +286,12 @@ export default function PartidaScreen() {
 
         <View style={styles.opciones}>
           {preguntaActual.opciones.map((opcion, index) => {
-            const mostrarResultado = !!opcionElegida;
+            const mostrarResultado = respuestaBloqueada;
             const estado = !mostrarResultado
               ? "idle"
               : opcion.es_correcta
                 ? "correcta"
-                : opcion.id === opcionElegida.id
+                : opcionElegida && opcion.id === opcionElegida.id
                   ? "incorrecta"
                   : "idle";
 
@@ -208,7 +301,7 @@ export default function PartidaScreen() {
                 opcion={opcion}
                 letra={LETRAS[index] ?? String(index + 1)}
                 estado={estado}
-                disabled={!!opcionElegida || guardando}
+                disabled={respuestaBloqueada || guardando}
                 onPress={() => elegirOpcion(opcion)}
               />
             );
@@ -220,18 +313,44 @@ export default function PartidaScreen() {
         <View style={styles.modalFondo}>
           <View style={styles.modalCard}>
             <Ionicons
-              name={opcionElegida?.es_correcta ? "checkmark-circle" : "close-circle"}
+              name={
+                tiempoAgotado
+                  ? "time-outline"
+                  : opcionElegida?.es_correcta
+                    ? "checkmark-circle"
+                    : "close-circle"
+              }
               size={54}
-              color={opcionElegida?.es_correcta ? colors.success : colors.error}
+              color={
+                tiempoAgotado
+                  ? colors.error
+                  : opcionElegida?.es_correcta
+                    ? colors.success
+                    : colors.error
+              }
             />
             <Text style={styles.modalTitulo}>
-              {opcionElegida?.es_correcta ? "Correcta" : "Incorrecta"}
+              {tiempoAgotado
+                ? "¡Se acabó el tiempo!"
+                : opcionElegida?.es_correcta
+                  ? "Correcta"
+                  : "Incorrecta"}
             </Text>
             <Text style={styles.modalTexto}>
-              {opcionElegida?.es_correcta
-                ? `Sumaste ${puntosUltimaRespuesta} puntos.`
-                : "No sumaste puntos esta vez."}
+              {tiempoAgotado
+                ? "No respondiste a tiempo, no sumaste puntos."
+                : opcionElegida?.es_correcta
+                  ? `Sumaste ${puntosUltimaRespuesta} puntos.`
+                  : "No sumaste puntos esta vez."}
             </Text>
+            {penalizadoPorTiempo && (
+              <View style={styles.penalizacionBadge}>
+                <Ionicons name="flash" size={14} color="#F5C518" />
+                <Text style={styles.penalizacionTexto}>
+                  Respuesta lenta: puntos reducidos a la mitad
+                </Text>
+              </View>
+            )}
             <Button
               label={esUltima ? "Ver resultado final" : "Siguiente pregunta"}
               onPress={continuar}
@@ -278,6 +397,11 @@ const styles = StyleSheet.create({
     color: colors.success,
     fontSize: fontSizes.label,
     fontWeight: "800",
+  },
+  timerWrap: {
+    width: "100%",
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
   },
   scroll: {
     flex: 1,
@@ -339,5 +463,21 @@ const styles = StyleSheet.create({
     fontSize: fontSizes.body,
     textAlign: "center",
     marginBottom: spacing.sm,
+  },
+  penalizacionBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#F5C51822",
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    marginTop: -spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  penalizacionTexto: {
+    color: "#F5C518",
+    fontSize: 12,
+    fontWeight: "700",
   },
 });
