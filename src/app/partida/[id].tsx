@@ -1,3 +1,4 @@
+// src/app/partida/[id].tsx
 import { ProgressBar } from "@/components/progress-bar";
 import { RespuestaOption } from "@/components/respuesta-option";
 import { TimerBar } from "@/components/timer-bar";
@@ -6,8 +7,8 @@ import { colors, fontSizes, radius, spacing } from "@/constants/theme";
 import { getPartidaById } from "@/services/partidas";
 import {
   getPreguntasByCategoria,
-  guardarRespuesta,
   prepararPreguntasPartida,
+  responderPregunta,
 } from "@/services/preguntas";
 import { DificultadEnum, Opcion, Pregunta } from "@/types/database";
 import { Ionicons } from "@expo/vector-icons";
@@ -26,12 +27,6 @@ import {
 
 const LETRAS = ["A", "B", "C", "D"];
 
-const PUNTOS_POR_DIFICULTAD = {
-  facil: 10,
-  intermedio: 15,
-  dificil: 20,
-};
-
 // tiempo límite por pregunta, según dificultad
 const TIEMPO_MS_POR_DIFICULTAD: Record<DificultadEnum, number> = {
   facil: 10000,
@@ -39,10 +34,9 @@ const TIEMPO_MS_POR_DIFICULTAD: Record<DificultadEnum, number> = {
   dificil: 20000,
 };
 
-// si responde dentro de la primera mitad del tiempo: puntos completos.
-// si responde en la segunda mitad: mitad de los puntos (redondeado).
+// si responde dentro de la primera mitad del tiempo: rápido (puntos completos).
+// si responde en la segunda mitad: lento (el servidor reduce a la mitad).
 const UMBRAL_PENALIZACION = 0.5;
-const FACTOR_PENALIZACION = 0.5;
 
 export default function PartidaScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -56,6 +50,8 @@ export default function PartidaScreen() {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [opcionElegida, setOpcionElegida] = useState<Opcion | null>(null);
+  const [opcionCorrectaId, setOpcionCorrectaId] = useState<number | null>(null);
+  const [ultimaCorrecta, setUltimaCorrecta] = useState(false);
   const [resultadoVisible, setResultadoVisible] = useState(false);
   const [puntosUltimaRespuesta, setPuntosUltimaRespuesta] = useState(0);
   const [tiempoAgotado, setTiempoAgotado] = useState(false);
@@ -64,11 +60,6 @@ export default function PartidaScreen() {
   const preguntaActual = preguntas[indice];
   const total = preguntas.length;
   const esUltima = indice === total - 1;
-
-  const puntosPorPregunta = useMemo(() => {
-    if (!preguntaActual) return 10;
-    return PUNTOS_POR_DIFICULTAD[preguntaActual.dificultad] ?? 10;
-  }, [preguntaActual]);
 
   const tiempoLimiteMs = useMemo(() => {
     if (!preguntaActual) return TIEMPO_MS_POR_DIFICULTAD.facil;
@@ -131,7 +122,8 @@ export default function PartidaScreen() {
   async function elegirOpcion(opcion: Opcion) {
     if (!preguntaActual || opcionElegida || guardando || tiempoAgotado) return;
 
-    const esCorrecta = opcion.es_correcta;
+    // el tiempo lo seguimos midiendo en el cliente (tenemos el timer acá),
+    // pero solo para decidir rápido/lento; el puntaje lo calcula el servidor.
     const tiempoTranscurridoMs = Date.now() - inicioPreguntaRef.current;
     const proporcionTranscurrida = Math.min(
       1,
@@ -139,31 +131,27 @@ export default function PartidaScreen() {
     );
     const respondioLento = proporcionTranscurrida >= UMBRAL_PENALIZACION;
 
-    const puntosObtenidos = esCorrecta
-      ? respondioLento
-        ? Math.round(puntosPorPregunta * FACTOR_PENALIZACION)
-        : puntosPorPregunta
-      : 0;
-
     setGuardando(true);
 
     try {
-      await guardarRespuesta({
+      // el servidor valida, corrige y puntúa. nunca sabemos la correcta antes.
+      const resultado = await responderPregunta({
         partidaId,
         preguntaId: preguntaActual.id,
         opcionElegidaId: opcion.id,
-        esCorrecta,
-        puntajeObtenido: puntosObtenidos,
+        rapido: !respondioLento,
       });
 
       setOpcionElegida(opcion);
-      setPuntosUltimaRespuesta(puntosObtenidos);
-      setPenalizadoPorTiempo(esCorrecta && respondioLento);
+      setOpcionCorrectaId(resultado.opcionCorrectaId);
+      setUltimaCorrecta(resultado.correcta);
+      setPuntosUltimaRespuesta(resultado.puntajeObtenido);
+      setPenalizadoPorTiempo(resultado.correcta && respondioLento);
       setResultadoVisible(true);
 
-      if (esCorrecta) {
+      if (resultado.correcta) {
         setCorrectas((actual) => actual + 1);
-        setPuntaje((actual) => actual + puntosObtenidos);
+        setPuntaje((actual) => actual + resultado.puntajeObtenido);
       }
     } catch {
       Alert.alert("Error", "No se pudo guardar tu respuesta.");
@@ -179,15 +167,17 @@ export default function PartidaScreen() {
     setGuardando(true);
 
     try {
-      // se registra como no respondida / incorrecta, sin opción elegida
-      await guardarRespuesta({
+      // sin opción elegida: el servidor la marca incorrecta y 0 puntos,
+      // pero igual nos devuelve cuál era la correcta para mostrarla.
+      const resultado = await responderPregunta({
         partidaId,
         preguntaId: preguntaActual.id,
         opcionElegidaId: null,
-        esCorrecta: false,
-        puntajeObtenido: 0,
+        rapido: false,
       });
 
+      setOpcionCorrectaId(resultado.opcionCorrectaId);
+      setUltimaCorrecta(false);
       setPuntosUltimaRespuesta(0);
       setPenalizadoPorTiempo(false);
       setResultadoVisible(true);
@@ -220,6 +210,8 @@ export default function PartidaScreen() {
 
     setIndice((actual) => actual + 1);
     setOpcionElegida(null);
+    setOpcionCorrectaId(null);
+    setUltimaCorrecta(false);
     setPuntosUltimaRespuesta(0);
     setTiempoAgotado(false);
     setPenalizadoPorTiempo(false);
@@ -289,7 +281,7 @@ export default function PartidaScreen() {
             const mostrarResultado = respuestaBloqueada;
             const estado = !mostrarResultado
               ? "idle"
-              : opcion.es_correcta
+              : opcion.id === opcionCorrectaId
                 ? "correcta"
                 : opcionElegida && opcion.id === opcionElegida.id
                   ? "incorrecta"
@@ -316,7 +308,7 @@ export default function PartidaScreen() {
               name={
                 tiempoAgotado
                   ? "time-outline"
-                  : opcionElegida?.es_correcta
+                  : ultimaCorrecta
                     ? "checkmark-circle"
                     : "close-circle"
               }
@@ -324,7 +316,7 @@ export default function PartidaScreen() {
               color={
                 tiempoAgotado
                   ? colors.error
-                  : opcionElegida?.es_correcta
+                  : ultimaCorrecta
                     ? colors.success
                     : colors.error
               }
@@ -332,14 +324,14 @@ export default function PartidaScreen() {
             <Text style={styles.modalTitulo}>
               {tiempoAgotado
                 ? "¡Se acabó el tiempo!"
-                : opcionElegida?.es_correcta
+                : ultimaCorrecta
                   ? "Correcta"
                   : "Incorrecta"}
             </Text>
             <Text style={styles.modalTexto}>
               {tiempoAgotado
                 ? "No respondiste a tiempo, no sumaste puntos."
-                : opcionElegida?.es_correcta
+                : ultimaCorrecta
                   ? `Sumaste ${puntosUltimaRespuesta} puntos.`
                   : "No sumaste puntos esta vez."}
             </Text>

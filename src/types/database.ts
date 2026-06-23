@@ -24,7 +24,7 @@ export interface Opcion {
   id: number;
   pregunta_id: number;
   texto: string;
-  es_correcta: boolean;
+  es_correcta?: boolean;
 }
 
 export interface Pregunta {

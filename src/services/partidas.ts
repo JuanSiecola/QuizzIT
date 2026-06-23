@@ -242,17 +242,10 @@ export async function getPartidaDetalle(
   return { ...partida, esRecord, puntajeRecord, diferencia };
 }
 
-export async function finalizarPartida(
-  partidaId: number,
-  data: { puntaje: number },
-): Promise<void> {
+export async function finalizarPartida(partidaId: number): Promise<void> {
   const { error } = await supabase
     .from("partida")
-    .update({
-      puntaje: data.puntaje,
-      fecha_fin: new Date().toISOString(),
-    })
+    .update({ fecha_fin: new Date().toISOString() })
     .eq("id", partidaId);
-
   if (error) throw error;
 }

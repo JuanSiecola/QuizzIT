@@ -13,7 +13,6 @@ type PreguntaData = {
     id: number;
     pregunta_id: number;
     texto: string;
-    es_correcta: boolean;
   }[];
 };
 
@@ -41,8 +40,7 @@ export async function getPreguntasByCategoria(
         respuesta (
           id,
           pregunta_id,
-          texto,
-          es_correcta
+          texto
         )
       )
     `,
@@ -97,24 +95,28 @@ export async function prepararPreguntasPartida(
   if (error) throw error;
 }
 
-export async function guardarRespuesta(data: {
+export async function responderPregunta(data: {
   partidaId: number;
   preguntaId: number;
   opcionElegidaId: number | null;
-  esCorrecta: boolean;
+  rapido: boolean;
+}): Promise<{
+  correcta: boolean;
+  opcionCorrectaId: number;
   puntajeObtenido: number;
-}): Promise<void> {
-  const { error } = await supabase
-    .from("partida_pregunta")
-    .update({
-      respondida: true,
-      correcta: data.esCorrecta,
-      id_respuesta_elegida: data.opcionElegidaId,
-    })
-    .eq("partida_id", data.partidaId)
-    .eq("pregunta_id", data.preguntaId)
-    .select("id")
-    .single();
-
+}> {
+  const { data: res, error } = await supabase.rpc("responder_pregunta", {
+    p_partida_id: data.partidaId,
+    p_pregunta_id: data.preguntaId,
+    p_opcion_elegida_id: data.opcionElegidaId,
+    p_rapido: data.rapido,
+  });
   if (error) throw error;
+
+  const fila = Array.isArray(res) ? res[0] : res;
+  return {
+    correcta: fila.correcta,
+    opcionCorrectaId: fila.opcion_correcta_id,
+    puntajeObtenido: fila.puntaje_obtenido,
+  };
 }
