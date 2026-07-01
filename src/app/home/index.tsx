@@ -89,19 +89,6 @@ export default function HomeScreen() {
       contentContainerStyle={styles.scroll}
       showsVerticalScrollIndicator={false}
     >
-      {/* ── Header ── */}
-      <View style={styles.header}>
-        <TouchableOpacity hitSlop={12}>
-          <Ionicons name="menu-outline" size={28} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <TouchableOpacity hitSlop={12}>
-          <Ionicons
-            name="notifications-outline"
-            size={26}
-            color={colors.textPrimary}
-          />
-        </TouchableOpacity>
-      </View>
 
       {/* ── Saludo ── */}
       <Text style={styles.saludo}>
@@ -184,14 +171,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: colors.background,
-  },
-
-  // Header
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: spacing.xl,
   },
 
   // Saludo
